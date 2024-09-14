@@ -1,0 +1,7 @@
+python-dotenv
+typing
+psycopg2-binary
+SQLAlchemy
+uvicorn
+pydantic
+"fastapi[standard]"

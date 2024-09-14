@@ -1,6 +1,15 @@
-from fastapi import FastAPI, UploadFile, Header
+from fastapi import FastAPI, UploadFile, Header, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Annotated
+from sqlalchemy.orm import Session
+from dotenv import load_dotenv
+
+from src.db import crud, models, schemas
+from src.db.postgres import SessionLocal, engine
+
+load_dotenv()
+
+models.Base.metadata.create_all(bind=engine)
 
 class user_prompt(BaseModel):
     text: str | None = "<no-prompt>"    # user query
@@ -8,6 +17,13 @@ class user_prompt(BaseModel):
     threshold: float | None = 0.5       # threshold for similarity
 
 app = FastAPI()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 # /health route
 @app.get("/health/")
@@ -23,7 +39,7 @@ async def health():
 
 # /search route
 @app.post("/search/")
-async def user_chat(prompt: user_prompt, user_id: Annotated[str | None, Header(convert_underscores=False)] = None):
+async def user_chat(prompt: user_prompt, db: Session = Depends(get_db), user_id: Annotated[str | None, Header(convert_underscores=False)] = None):
     """_summary_
     Route to chat with RAG Agent
 
@@ -37,6 +53,9 @@ async def user_chat(prompt: user_prompt, user_id: Annotated[str | None, Header(c
         "user_info" : header information of the user
     """
 
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Unauthorized enter user id")
+    
     if prompt.text == "<no-prompt>":
         return { "bot_message": "prompt a valid query", "user_message": prompt, "user_info": user_id }
     
@@ -46,6 +65,14 @@ async def user_chat(prompt: user_prompt, user_id: Annotated[str | None, Header(c
     if prompt.threshold > 1.0 or prompt.threshold < 0.0:
         return { "bot_message": "invalid threshold value", "user_message": prompt, "user_info": user_id }
     
+    db_user = crud.get_user(db, user_id=user_id)
+    if db_user is None:
+        err = crud.create_user(db=db, user_id=user_id)
+    else:
+        if db_user.count > 4:
+            raise HTTPException(status_code=429, detail=f"user id '{user_id}' 5 request limit has exhausted")
+        err = crud.update_user_count(db=db, user_id=user_id)
+
     # Dummy response
     bot_message = {
         "message": "I am great 🎉",
