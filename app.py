@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from src.db import crud, models, schemas
 from src.db.postgres import SessionLocal, engine
+from src.db.chroma_db import SearchStore, UploadStore
 
 load_dotenv()
 
@@ -14,9 +15,12 @@ models.Base.metadata.create_all(bind=engine)
 class user_prompt(BaseModel):
     text: str | None = "<no-prompt>"    # user query
     top_k: int | None = 3               # return top k results found
-    threshold: float | None = 0.5       # threshold for similarity
+    threshold: float | None = 0.3       # threshold for similarity
 
 app = FastAPI()
+
+search_engine = SearchStore()
+upload_engine = UploadStore()
 
 def get_db():
     db = SessionLocal()
@@ -24,6 +28,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 # /health route
 @app.get("/health/")
@@ -37,18 +42,19 @@ async def health():
 
     return {"Server Status": "Successfully running 🎉"}
 
+
 # /search route
 @app.post("/search/")
 async def user_chat(prompt: user_prompt, db: Session = Depends(get_db), user_id: Annotated[str | None, Header(convert_underscores=False)] = None):
     """_summary_
-    Route to chat with RAG Agent
+    Route to retrive data
 
     Args:
         prompt : user prompt
         user_id : user id from header
 
     Returns:
-        "bot_message" : response from the RAG Agent
+        "bot_message" : response from the search engine
         "user_message" : prompt by the user
         "user_info" : header information of the user
     """
@@ -73,22 +79,13 @@ async def user_chat(prompt: user_prompt, db: Session = Depends(get_db), user_id:
             raise HTTPException(status_code=429, detail=f"user id '{user_id}' 5 request limit has exhausted")
         err = crud.update_user_count(db=db, user_id=user_id)
 
-    # Dummy response
+    top_k_results, inference_time = search_engine.search_top_k(text=prompt.text, top_k=prompt.top_k, threshold=prompt.threshold)
+
     bot_message = {
-        "message": "I am great 🎉",
-        "top_k_results": [
-            {
-                "message": "I am great 🎉"
-            },
-            {
-                "message": "I am fine"
-            },
-            {
-                "message": "I am good"
-            }
-        ],
+        "top_k_results": top_k_results,
         "top_k": prompt.top_k,
-        "threshold": prompt.threshold
+        "threshold": prompt.threshold,
+        "inference_time (secs)": inference_time
     }
 
     return { "bot_message": bot_message, "user_message": prompt, "user_info": user_id }

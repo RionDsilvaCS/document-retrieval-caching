@@ -4,4 +4,10 @@ psycopg2-binary
 SQLAlchemy
 uvicorn
 pydantic
-"fastapi[standard]"
+fastapi[standard]
+chromadb
+llama-index
+llama-index-vector-stores-chroma
+llama-index-core 
+llama-index-readers-file 
+llama-index-embeddings-huggingface
