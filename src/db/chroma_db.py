@@ -108,9 +108,9 @@ class SearchStore:
             if temp_score[1] is not None:
                 nodes = self.query_look_up[temp_score[1]]
 
-            for node in nodes:
-                if inc < top_k and threshold < node.score:
-                    top_k_results.append({"message":node.text})
-                    inc += 1
+                for node in nodes:
+                    if inc < top_k and threshold < node.score:
+                        top_k_results.append({"message":node.text})
+                        inc += 1
 
         return top_k_results
