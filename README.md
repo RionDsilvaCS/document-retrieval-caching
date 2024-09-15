@@ -7,13 +7,13 @@ Created a Queue in server which will store limited number of nodes from vector d
 ### Results
 
 First request => time taken `787 ms`
-[first_img](./img/first_request.png)
+![first_img](./img/first_request.png)
 
 Second Similar request => time taken `54 ms`
-[second_img](./img/second_request.png)
+![second_img](./img/second_request.png)
 
 Bad request 
-[bad_img](./img/bad_request.png)
+![bad_img](./img/bad_request.png)
 
 
 ### Example Request 
