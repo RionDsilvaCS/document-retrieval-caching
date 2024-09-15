@@ -11,6 +11,7 @@ from llama_index.core import Settings, StorageContext
 import time
 import os
 from dotenv import load_dotenv
+import numpy as np
 
 load_dotenv()
 
@@ -54,8 +55,10 @@ class SearchStore:
             similarity_top_k=12,
         )
 
+        self.cached_query = []
+        self.query_look_up = {}
+
     def search_top_k(self, text: str, top_k: int, threshold: float):
-        start = time.time()
 
         top_k_results = []
         inc = 0
@@ -65,8 +68,49 @@ class SearchStore:
             if inc < top_k and threshold < node.score:
                 top_k_results.append({"message":node.text})
                 inc += 1
+
+        if len(self.cached_query) > 10:  
+            del_text, del_enc_text = self.cached_query.pop(0)
+            del self.query_look_up[del_text]
+
+        encoded_text = self.embed_model.get_text_embedding(text)   
+        self.cached_query.append([text, encoded_text])
+        self.query_look_up[text] = nodes
+
+        return top_k_results
+
+    def cosine_similarity(self, vector_a, vector_b):
+        vector_a = np.array(vector_a)
+        vector_b = np.array(vector_b)
+
+        dot_product = np.dot(vector_a, vector_b)
+        magnitude_a = np.linalg.norm(vector_a)
+        magnitude_b = np.linalg.norm(vector_b)
+
+        if magnitude_a == 0 or magnitude_b == 0:
+            return 0.0  # Handle zero vectors
+
+        return dot_product / (magnitude_a * magnitude_b)
+    
+    def cached_search(self, text:str, top_k:int, threshold: float):
+
+        top_k_results = []
+        inc = 0
+        temp_score = (0.0, None)
         
-        inf_time = float(time.time() - start)
+        if len(self.cached_query) != 0:
+            encoded_text = self.embed_model.get_text_embedding(text)
+            for row in self.cached_query:
+                score = float(self.cosine_similarity(encoded_text, row[1]))
+                if  score > 0.9 and score > temp_score[0]:
+                    temp_score = (score, row[0])
+            
+            if temp_score[1] is not None:
+                nodes = self.query_look_up[temp_score[1]]
 
-        return top_k_results, inf_time
+            for node in nodes:
+                if inc < top_k and threshold < node.score:
+                    top_k_results.append({"message":node.text})
+                    inc += 1
 
+        return top_k_results

@@ -3,10 +3,11 @@ from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
+import time
 
 from src.db import crud, models, schemas
 from src.db.postgres import SessionLocal, engine
-from src.db.chroma_db import SearchStore, UploadStore
+from src.db.chroma_db import SearchStore
 
 load_dotenv()
 
@@ -20,7 +21,6 @@ class user_prompt(BaseModel):
 app = FastAPI()
 
 search_engine = SearchStore()
-upload_engine = UploadStore()
 
 def get_db():
     db = SessionLocal()
@@ -58,6 +58,7 @@ async def user_chat(prompt: user_prompt, db: Session = Depends(get_db), user_id:
         "user_message" : prompt by the user
         "user_info" : header information of the user
     """
+    start = time.time()
 
     if user_id is None:
         raise HTTPException(status_code=401, detail="Unauthorized enter user id")
@@ -79,7 +80,12 @@ async def user_chat(prompt: user_prompt, db: Session = Depends(get_db), user_id:
             raise HTTPException(status_code=429, detail=f"user id '{user_id}' 5 request limit has exhausted")
         err = crud.update_user_count(db=db, user_id=user_id)
 
-    top_k_results, inference_time = search_engine.search_top_k(text=prompt.text, top_k=prompt.top_k, threshold=prompt.threshold)
+    top_k_results = search_engine.cached_search(text=prompt.text, top_k=prompt.top_k, threshold=prompt.threshold)
+
+    if len(top_k_results) == 0:
+        top_k_results = search_engine.search_top_k(text=prompt.text, top_k=prompt.top_k, threshold=prompt.threshold)
+
+    inference_time = time.time() - start
 
     bot_message = {
         "top_k_results": top_k_results,
