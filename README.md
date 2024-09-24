@@ -1,5 +1,5 @@
 # document-retrieval
-Build a backend for document retrieval. The goal of the task is to generate context for LLMs to use for inference.
+Build a backend for document retrieval with caching.
 
 **Caching Algorithm**
 Created a Queue in server which will store limited number of nodes from vector database from previous quries. For every query from user will be first matched with queries in queue and if similarity (cosine) is above 0.9 than those nodes returned back from the lookup table maintained seperately.  
@@ -42,7 +42,7 @@ docker run -p 8000:8000 chromadb/chroma
 Postgres Image
 ```shell
 docker run --name user-database -p 5432:5432
- -e POSTGRES_PASSWORD=abcdefgh -d postgres:12.20-alpine3.20   
+ -e POSTGRES_PASSWORD=your_password -d postgres:12.20-alpine3.20   
 ```
 ```shell
 docker stop user-database
@@ -50,13 +50,13 @@ docker stop user-database
 
 Doc-Retrieval 
 ```shell
-git clone https://github.com/RionDsilvaCS/21BCE8083_ML.git
+git clone https://github.com/RionDsilvaCS/document-retrieval-caching.git
 ```
 
 Create  `.env` file in the main directory and add the below variables
 ```
-DATABASE_URL="postgresql://postgres:abcdefgh@localhost:5432/postgres"
-COLLECTION_NAME="cook_book"
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/postgres"
+COLLECTION_NAME="collection_name"
 ```
 
 Create directory name `data` and add pdf documents 
@@ -101,7 +101,7 @@ http://127.0.0.1:8001/search
 Header 
 ```JSON
 {
-  "user_id": "R!I@O#N$"
+  "user_id": "riondsilva"
 }
 ```
 
@@ -138,6 +138,6 @@ Response
     "threshold": 0.9,
     "inference_time (secs)": 1.16
   },
-  "user_info": "R!I@O#N$"
+  "user_info": "riondsilva"
 }
 ```
