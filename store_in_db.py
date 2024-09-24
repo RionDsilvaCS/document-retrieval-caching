@@ -12,7 +12,7 @@ chroma_client = chromadb.HttpClient(host="localhost", port=8000)
 
 print("Starting...")
 
-chroma_collection = chroma_client.get_or_create_collection("cook_book")
+chroma_collection = chroma_client.get_or_create_collection("collection_name")
 vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
 storage_context = StorageContext.from_defaults(vector_store=vector_store)
 

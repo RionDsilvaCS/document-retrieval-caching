@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, Header, Depends, HTTPException
+from fastapi import FastAPI, Header, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy.orm import Session
